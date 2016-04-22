@@ -1,12 +1,12 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.net.handler.frontend;
 
 import alchemystar.lancelot.common.net.proto.util.ErrorCode;
 
 /**
- *
+ * SavePointHandler
  * @Author lizhuyang
  */
 public final class SavepointHandler {

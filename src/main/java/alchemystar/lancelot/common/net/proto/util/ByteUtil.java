@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.net.proto.util;
 
@@ -7,7 +7,7 @@ import alchemystar.lancelot.common.net.proto.mysql.MySQLMessage;
 import io.netty.buffer.ByteBuf;
 
 /**
- * @author xiongzhao@baidu.com
+ * @author xiongzhao@alchemystar.com
  */
 public class ByteUtil {
     public static int readUB2(ByteBuf data) {

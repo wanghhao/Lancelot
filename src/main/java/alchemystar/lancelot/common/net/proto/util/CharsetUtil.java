@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.net.proto.util;
 
@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author xiongzhao@baidu.com 2010-8-3 下午06:12:53
+ * @author xiongzhao@alchemystar.com 2010-8-3 下午06:12:53
  */
 public class CharsetUtil {
     private static final String[] INDEX_TO_CHARSET = new String[99];

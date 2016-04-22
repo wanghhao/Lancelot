@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.threadpool.limited;
 

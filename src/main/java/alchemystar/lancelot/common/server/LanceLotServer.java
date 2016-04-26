@@ -11,6 +11,7 @@ import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataPool;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
 import alchemystar.lancelot.common.net.handler.factory.FrontHandlerFactory;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -57,9 +58,12 @@ public class LanceLotServer extends Thread {
             MySqlDataSource dataSource = new MySqlDataSource(dataPool);
             ServerBootstrap b = new ServerBootstrap();
             // 这边的childHandler是用来管理accept的
+            // 由于线程间传递的是byte[],所以内存池okay
+            // 只需要保证分配ByteBuf和write在同一个线程(函数)就行了
             b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
                     .option(ChannelOption.SO_BACKLOG, 1024)
-                    .childHandler(new FrontHandlerFactory(dataSource));
+                    .childHandler(new FrontHandlerFactory(dataSource)).option(ChannelOption.ALLOCATOR,
+                    PooledByteBufAllocator.DEFAULT);
             ChannelFuture f = b.bind(SystemConfig.ServerPort).sync();
             f.channel().closeFuture().sync();
 

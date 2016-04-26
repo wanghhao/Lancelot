@@ -171,7 +171,7 @@ public abstract class MySQLPacket {
     public static final int SERVER_MORE_RESULTS_EXISTS=8;
 
     public int packetLength;
-    public byte packetId;
+    public byte packetId=1;
 
     /**
      * 把数据包写到buffer中，如果buffer满了就把buffer通过前端连接写出。

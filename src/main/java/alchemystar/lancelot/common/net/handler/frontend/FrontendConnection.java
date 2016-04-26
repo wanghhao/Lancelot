@@ -4,31 +4,32 @@
 package alchemystar.lancelot.common.net.handler.frontend;
 
 import java.io.UnsupportedEncodingException;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
-import alchemystar.lancelot.common.net.handler.backend.cmd.CmdType;
-import alchemystar.lancelot.common.net.handler.backend.cmd.Command;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
-import alchemystar.lancelot.common.net.proto.MySQLPacket;
+import alchemystar.lancelot.common.net.handler.node.MultiNodeExecutor;
+import alchemystar.lancelot.common.net.handler.node.ResponseHandler;
+import alchemystar.lancelot.common.net.handler.node.SingleNodeExecutor;
 import alchemystar.lancelot.common.net.proto.mysql.BinaryPacket;
-import alchemystar.lancelot.common.net.proto.mysql.CommandPacket;
 import alchemystar.lancelot.common.net.proto.mysql.ErrorPacket;
 import alchemystar.lancelot.common.net.proto.mysql.MySQLMessage;
 import alchemystar.lancelot.common.net.proto.mysql.OkPacket;
 import alchemystar.lancelot.common.net.proto.util.CharsetUtil;
 import alchemystar.lancelot.common.net.proto.util.ErrorCode;
+import alchemystar.lancelot.common.net.route.RouteResultset;
+import alchemystar.lancelot.common.net.route.RouteResultsetNode;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 
 /**
  * 前端连接
  *
  * @Author lizhuyang
  */
-public class FrontendConnection {
+public class FrontendConnection extends AbstractFrontendConnection {
 
     public static final int packetHeaderSize = 4;
     private static final Logger logger = LoggerFactory.getLogger(FrontendConnection.class);
@@ -40,17 +41,21 @@ public class FrontendConnection {
     protected String schema;
     protected String charset;
     protected int charsetIndex;
-    protected ChannelHandlerContext ctx;
     protected FrontendQueryHandler queryHandler;
-    // todo actuall insert will use this
+    // update by the ResponseHandler
     private long lastInsertId;
     private MySqlDataSource dataSource;
     private BackendConnection backend;
+    private ResponseHandler executeHandler;
+
+    // 不同的ResultSetNode的集合
+    private final ConcurrentHashMap<RouteResultsetNode, BackendConnection> target =
+            new ConcurrentHashMap<RouteResultsetNode, BackendConnection>();
 
     private static final long AUTH_TIMEOUT = 15 * 1000L;
 
     private volatile int txIsolation;
-    private volatile boolean autocommit;
+    private volatile boolean autocommit = true;
     private volatile boolean txInterrupted;
 
     // initDB的同时 bind BackendConnecton
@@ -74,36 +79,36 @@ public class FrontendConnection {
             return;
         } else {
             this.schema = db;
-            bindConnection();
             writeOk();
             return;
         }
 
     }
 
-    private void bindConnection(){
-        if(backend == null){
-            backend = dataSource.getBackend();
-            backend.setFrontend(this);
-        }
+    /**
+     * 获取已经状态同步过的backend
+     *
+     * @return
+     */
+    public BackendConnection getStateSyncBackend() {
+        BackendConnection backend = dataSource.getBackend();
+        backend.setFrontend(this);
         //sync the charset
-        backend.postCommand(backend.getCharsetCommand(charsetIndex));
+        backend.postCommand(getCharsetCommand(charsetIndex));
         // sync the schema
-        if(schema != null){
-            backend.postCommand(backend.getUseSchemaCommand(schema));
+        if (schema != null) {
+            backend.postCommand(getUseSchemaCommand(schema));
         }
         // sync 事务隔离级别
-        backend.postCommand(backend.getTxIsolationCommand(txIsolation));
+        backend.postCommand(getTxIsolationCommand(txIsolation));
         // sync auto commit状态
-        if(autocommit) {
-            backend.autocommitOn();
-        }else{
-            backend.autocommitOff();
+        if (autocommit) {
+            backend.postCommand(getAutoComminOnCmd());
+        } else {
+            backend.postCommand(getAutoCOmminOffCmd());
         }
+        return backend;
     }
-
-
-
 
     public void query(BinaryPacket bin) {
         if (queryHandler != null) {
@@ -129,8 +134,19 @@ public class FrontendConnection {
         }
     }
 
+    public BackendConnection getTarget(RouteResultsetNode key) {
+        return target.get(key);
+    }
+
+    public void putTarget(RouteResultsetNode key, BackendConnection backend) {
+        target.put(key, backend);
+    }
+
     public void close() {
         logger.info("close frontedconnection,host:{},port:{}", host, port);
+        if (backend != null) {
+            backend.recycle();
+        }
         ctx.close();
     }
 
@@ -218,8 +234,12 @@ public class FrontendConnection {
         if (txInterrupted) {
             writeErrMessage(ErrorCode.ER_YES, "Transaction error, need to rollback.");
         } else {
-            // todo data source
-            // session.commit();
+            if (schema == null) {
+                writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
+                return;
+            } else {
+                executeHandler.commit();
+            }
         }
     }
 
@@ -227,28 +247,41 @@ public class FrontendConnection {
      * 回滚事务
      */
     public void rollback() {
-        // 状态检查
+        // 状态检查 todo
         if (txInterrupted) {
             txInterrupted = false;
         }
-
-        // 执行回滚 todo data source
-        // session.rollback();
+        executeHandler.rollBack();
     }
 
     public void execute(String sql, int type) {
-        backend.postCommand(convertSqlToCommand(sql,type));
-        backend.fireCmd();
+        if (schema == null) {
+            writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
+            return;
+        } else {
+            RouteResultset set = route(sql, type);
+            if (set.getNodeCount() == 0) {
+                writeErrMessage(ErrorCode.ER_PARSE_ERROR, "parse sql and 0 node get");
+                return;
+            } else if (set.getNodeCount() == 1) {
+                executeHandler = new SingleNodeExecutor(set, this);
+            } else {
+                executeHandler = new MultiNodeExecutor(set, this);
+            }
+            executeHandler.setRrs(set);
+            executeHandler.execute();
+        }
     }
 
-    private Command convertSqlToCommand(String sql, int type){
-
-        CommandPacket packet = new CommandPacket();
-        packet.packetId = 0;
-        packet.command = MySQLPacket.COM_QUERY;
-        packet.arg = sql.getBytes();
-        Command cmd = new Command(packet.getByteBuf(ctx), CmdType.FRONTEND_TYPE,type);
-        return cmd;
+    private RouteResultset route(String sql, int type) {
+        RouteResultset set = new RouteResultset();
+        RouteResultsetNode[] nodes = new RouteResultsetNode[2];
+        nodes[0] = new RouteResultsetNode("1", sql, type);
+        nodes[1] = new RouteResultsetNode("2", sql, type);
+        set.setSqlType(type);
+        set.setStatement(sql);
+        set.setNodes(nodes);
+        return set;
     }
 
     public String getCharset() {
@@ -272,14 +305,6 @@ public class FrontendConnection {
 
     public void setQueryHandler(FrontendQueryHandler queryHandler) {
         this.queryHandler = queryHandler;
-    }
-
-    public ChannelHandlerContext getCtx() {
-        return ctx;
-    }
-
-    public void setCtx(ChannelHandlerContext ctx) {
-        this.ctx = ctx;
     }
 
     public static int getPacketHeaderSize() {
@@ -368,5 +393,14 @@ public class FrontendConnection {
 
     public void setDataSource(MySqlDataSource dataSource) {
         this.dataSource = dataSource;
+    }
+
+    public ResponseHandler getExecuteHandler() {
+        return executeHandler;
+    }
+
+    public void setExecuteHandler(
+            MultiNodeExecutor executeHandler) {
+        this.executeHandler = executeHandler;
     }
 }

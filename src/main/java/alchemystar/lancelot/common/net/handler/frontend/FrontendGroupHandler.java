@@ -4,22 +4,21 @@
 package alchemystar.lancelot.common.net.handler.frontend;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import alchemystar.lancelot.common.net.proto.mysql.ErrorPacket;
+import alchemystar.lancelot.common.net.proto.util.ErrorCode;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
- * 前段连接收集器
+ * 前端连接收集器
  *
  * @Author lizhuyang
  */
-public class FrontendGroupHandler extends ChannelInboundHandlerAdapter {
-
-    private static final Logger logger = LoggerFactory.getLogger(FrontendGroupHandler.class);
+public class FrontendGroupHandler extends ChannelHandlerAdapter {
 
     public static ConcurrentHashMap<Long, FrontendConnection> frontendGroup = new ConcurrentHashMap<Long,
             FrontendConnection>();
@@ -32,7 +31,7 @@ public class FrontendGroupHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        frontendGroup.put(source.getId(),source);
+        frontendGroup.put(source.getId(), source);
         ctx.fireChannelActive();
     }
 
@@ -41,4 +40,5 @@ public class FrontendGroupHandler extends ChannelInboundHandlerAdapter {
         frontendGroup.remove(source.getId());
         ctx.fireChannelActive();
     }
+
 }

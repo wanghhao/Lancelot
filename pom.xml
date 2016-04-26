@@ -32,7 +32,7 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
-      <version>4.0.10.Final</version>
+      <version>5.0.0.Alpha1</version>
       <exclusions>
         <exclusion>
           <groupId>log4j</groupId>

@@ -5,8 +5,9 @@ package alchemystar.lancelot.common.net.handler.factory;
 
 import alchemystar.lancelot.common.net.codec.MySqlPacketDecoder;
 import alchemystar.lancelot.common.net.handler.backend.BackendAuthenticator;
+import alchemystar.lancelot.common.net.handler.backend.BackendHeadHandler;
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
-import alchemystar.lancelot.common.net.handler.backend.BackendFirstHandler;
+import alchemystar.lancelot.common.net.handler.backend.BackendTailHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 
@@ -26,10 +27,12 @@ public class BackendHandlerFactory extends ChannelInitializer<SocketChannel> {
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
         BackendConnection connection = factory.getConnection();
-        BackendFirstHandler firstHandler = new BackendFirstHandler(connection);
+        BackendHeadHandler firstHandler = new BackendHeadHandler(connection);
         BackendAuthenticator authHandler = new BackendAuthenticator(connection);
+        BackendTailHandler tailHandler = new BackendTailHandler(connection);
         ch.pipeline().addLast(new MySqlPacketDecoder());
-        ch.pipeline().addLast("BackendFirstHandler",firstHandler);
+        ch.pipeline().addLast("BackendHeadHandler", firstHandler);
         ch.pipeline().addLast(authHandler);
+        ch.pipeline().addLast(tailHandler);
     }
 }

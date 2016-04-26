@@ -20,6 +20,9 @@ public interface ErrorCode {
     int ERR_WRITE_BY_EVENT                         = 3007;
     int ERR_WRITE_BY_QUEUE                         = 3008;
     int ERR_HANDLE_DATA                            = 3009;
+    int ERR_EXCEPTION_CAUGHT                       = 3010;
+    int ERR_SINGLE_EXECUTE_NODES                   = 3011;
+    int NO_TRANSACTION_IN_MULTI_NODES              = 3012;
 
     // mysql error code
     int ER_HASHCHK                                 = 1000;

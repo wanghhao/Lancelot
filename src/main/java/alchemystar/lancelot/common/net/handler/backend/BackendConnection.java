@@ -6,17 +6,13 @@ package alchemystar.lancelot.common.net.handler.backend;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
-import alchemystar.lancelot.common.net.exception.UnknownTxIsolationException;
-import alchemystar.lancelot.common.net.handler.backend.cmd.CmdPacketEnum;
-import alchemystar.lancelot.common.net.handler.backend.cmd.CmdType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import alchemystar.lancelot.common.net.handler.backend.cmd.Command;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataPool;
 import alchemystar.lancelot.common.net.handler.frontend.FrontendConnection;
-import alchemystar.lancelot.common.net.proto.MySQLPacket;
-import alchemystar.lancelot.common.net.proto.mysql.CommandPacket;
 import alchemystar.lancelot.common.net.proto.util.CharsetUtil;
-import alchemystar.lancelot.common.net.proto.util.Isolations;
-import alchemystar.lancelot.parser.ServerParse;
 import io.netty.channel.ChannelHandlerContext;
 
 /**
@@ -25,6 +21,8 @@ import io.netty.channel.ChannelHandlerContext;
  * @Author lizhuyang
  */
 public class BackendConnection {
+
+    private static final Logger logger = LoggerFactory.getLogger(BackendConnection.class);
 
     public int charsetIndex;
     public String charset;
@@ -46,91 +44,10 @@ public class BackendConnection {
         cmdQue = new ConcurrentLinkedQueue<Command>();
     }
 
-    public void autocommitOn() {
-        CommandPacket packet = CmdPacketEnum._AUTOCOMMIT_ON;
-        Command cmd = new Command(packet.getByteBuf(ctx), CmdType.BACKEND_TYPE, ServerParse.SET);
-        postCommand(cmd);
-    }
-
-    public void autocommitOff() {
-        CommandPacket packet = CmdPacketEnum._AUTOCOMMIT_OFF;
-        Command cmd = new Command(packet.getByteBuf(ctx), CmdType.BACKEND_TYPE, ServerParse.SET);
-        postCommand(cmd);
-    }
-
     public void fireCmd() {
         Command command = peekCommand();
         if (command != null) {
-            ctx.writeAndFlush(command.getCmdBuf());
-        } else {
-            frontend.writeOk();
-        }
-    }
-
-    public Command getFrontendCommand(CommandPacket packet, int sqlType) {
-        Command command = new Command();
-        command.setCmdBuf(packet.getByteBuf(ctx));
-        command.setSqlType(sqlType);
-        command.setType(CmdType.FRONTEND_TYPE);
-        return command;
-    }
-
-    public Command getBackendCommand(CommandPacket packet, int sqlType) {
-        Command command = new Command();
-        command.setCmdBuf(packet.getByteBuf(ctx));
-        command.setSqlType(sqlType);
-        command.setType(CmdType.BACKEND_TYPE);
-        return command;
-    }
-
-    public Command getTxIsolationCommand(int txIsolation) {
-        CommandPacket packet = getTxIsolationPacket(txIsolation);
-        return getBackendCommand(packet, ServerParse.SET);
-    }
-
-    public Command getCharsetCommand(int ci) {
-        CommandPacket packet = getCharsetPacket(ci);
-        return getBackendCommand(packet, ServerParse.SET);
-    }
-
-    public Command getUseSchemaCommand(String schema) {
-        CommandPacket packet = getUseSchemaPacket(schema);
-        return getBackendCommand(packet, ServerParse.USE);
-    }
-
-    private CommandPacket getUseSchemaPacket(String schema) {
-        StringBuilder s = new StringBuilder();
-        s.append("USE ").append(schema);
-        CommandPacket cmd = new CommandPacket();
-        cmd.packetId = 0;
-        cmd.command = MySQLPacket.COM_QUERY;
-        cmd.arg = s.toString().getBytes();
-        return cmd;
-    }
-
-    private CommandPacket getCharsetPacket(int ci) {
-        String charset = CharsetUtil.getCharset(ci);
-        StringBuilder s = new StringBuilder();
-        s.append("SET names ").append(charset);
-        CommandPacket cmd = new CommandPacket();
-        cmd.packetId = 0;
-        cmd.command = MySQLPacket.COM_QUERY;
-        cmd.arg = s.toString().getBytes();
-        return cmd;
-    }
-
-    private CommandPacket getTxIsolationPacket(int txIsolation) {
-        switch (txIsolation) {
-            case Isolations.READ_UNCOMMITTED:
-                return CmdPacketEnum._READ_UNCOMMITTED;
-            case Isolations.READ_COMMITTED:
-                return CmdPacketEnum._READ_COMMITTED;
-            case Isolations.REPEATED_READ:
-                return CmdPacketEnum._REPEATED_READ;
-            case Isolations.SERIALIZABLE:
-                return CmdPacketEnum._SERIALIZABLE;
-            default:
-                throw new UnknownTxIsolationException("txIsolation:" + txIsolation);
+            ctx.writeAndFlush(command.getCmdByteBuf(ctx));
         }
     }
 
@@ -172,8 +89,15 @@ public class BackendConnection {
 
     // 连接回收
     public void recycle() {
+        logger.info("backendConnection has been recycled");
         mySqlDataPool.putBackend(this);
     }
+
+    public void discard(){
+        mySqlDataPool.discard(this);
+        close();
+    }
+
 
     public void countDown() {
         if (!mySqlDataPool.isInited()) {
@@ -219,4 +143,6 @@ public class BackendConnection {
     public void setFrontend(FrontendConnection frontend) {
         this.frontend = frontend;
     }
+
+
 }

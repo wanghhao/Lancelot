@@ -14,11 +14,14 @@ import org.slf4j.LoggerFactory;
 import alchemystar.lancelot.common.config.SocketConfig;
 import alchemystar.lancelot.common.config.SystemConfig;
 import alchemystar.lancelot.common.net.exception.RetryConnectFailException;
+import alchemystar.lancelot.common.net.handler.backend.BackendHeadHandler;
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
-import alchemystar.lancelot.common.net.handler.backend.BackendFirstHandler;
 import alchemystar.lancelot.common.net.handler.factory.BackendConnectionFactory;
 import alchemystar.lancelot.common.net.handler.factory.BackendHandlerFactory;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -54,6 +57,8 @@ public class MySqlDataPool {
     private final ReentrantLock lock;
     // 当前连接池是否被初始化成功的标识
     private final AtomicBoolean initialized;
+    // data pool的command allocator
+    private ByteBufAllocator allocator;
 
     public MySqlDataPool(int initSize, int maxPoolSize) {
         this.maxPoolSize = maxPoolSize;
@@ -65,11 +70,14 @@ public class MySqlDataPool {
         latch = new CountDownLatch(initSize);
         lock = new ReentrantLock();
         initialized = new AtomicBoolean(false);
+        allocator = new UnpooledByteBufAllocator(false);
     }
 
     public void init() {
         factory = new BackendConnectionFactory(this);
-        b.group(backendGroup).channel(NioSocketChannel.class).handler(new BackendHandlerFactory(factory));
+        // 采用PooledBuf来减少GC
+        b.group(backendGroup).channel(NioSocketChannel.class).handler(new BackendHandlerFactory(factory))
+                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         setOption(b);
         initBackends();
         initIdleCheck();
@@ -104,9 +112,11 @@ public class MySqlDataPool {
         BackendConnection backend = null;
         lock.lock();
         try {
-            if (idleCount >= 1 && items[idleCount] != null) {
-                idleCount--;
-                backend =  items[idleCount];
+            // idleCount 初始为0
+            if (idleCount >= 1 && items[idleCount--] != null) {
+                backend = items[idleCount];
+                logger.debug("use pooled backend");
+                return backend;
             }
         } finally {
             lock.unlock();
@@ -132,10 +142,9 @@ public class MySqlDataPool {
         try {
             // must wait to init the channel
             future.sync();
-            BackendFirstHandler firstHandler =
-                    (BackendFirstHandler) future.channel().pipeline().get(BackendFirstHandler.HANDLER_NAME);
+            BackendHeadHandler firstHandler =
+                    (BackendHeadHandler) future.channel().pipeline().get(BackendHeadHandler.HANDLER_NAME);
             firstHandler.getSource().syncLatch.await();
-            // sync the state,auto commit
             return firstHandler.getSource();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -143,9 +152,14 @@ public class MySqlDataPool {
         return null;
     }
 
-    public void recycle(BackendConnection backend){
+    public void recycle(BackendConnection backend) {
         putBackend(backend);
     }
+
+    public void discard(BackendConnection backend){
+        logger.info("backendConnection discard it");
+    }
+
 
     public void putBackend(BackendConnection backend) {
         lock.lock();
@@ -175,7 +189,8 @@ public class MySqlDataPool {
      * 初始化IdleCheck
      */
     private void initIdleCheck() {
-      //  backendGroup.scheduleAtFixedRate(new IdleCheckTask(), SystemConfig.IdleCheckInterval, SystemConfig.IdleCheckInterval,TimeUnit.MILLISECONDS);
+        //  backendGroup.scheduleAtFixedRate(new IdleCheckTask(), SystemConfig.IdleCheckInterval, SystemConfig
+        // .IdleCheckInterval,TimeUnit.MILLISECONDS);
     }
 
     private void setOption(Bootstrap bootstrap) {
@@ -198,6 +213,16 @@ public class MySqlDataPool {
         }
 
         private void idleCheck() {
+            // 伪代码 类Druid的最小锁时间实现
+            // 在这个地方拿出连接
+            // 心跳command用当前allocate(Unpooled)来分配,防内存泄露
+            // postCommand(HeartBeat)
+            // fireCmd
+            // markInHeartBeat
+            // 在commonHandler中
+            // if(marInHeartBeat) then read okay
+            // then recycle
+            // heartBeat完成,锁只在一处
             logger.info("we now do idle check");
         }
     }

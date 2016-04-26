@@ -29,6 +29,16 @@ public class EOFPacket extends MySQLPacket {
         status = mm.readUB2();
     }
 
+    public void read(BinaryPacket bin){
+        packetLength = bin.packetLength;
+        packetId = bin.packetId;
+        MySQLMessage mm = new MySQLMessage(bin.data);
+        fieldCount = mm.read();
+        warningCount = mm.readUB2();
+        status = mm.readUB2();
+    }
+
+
     @Override
     public ByteBuf writeBuf(ByteBuf buffer,ChannelHandlerContext ctx) {
         int size = calcPacketSize();

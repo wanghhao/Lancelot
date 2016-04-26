@@ -37,7 +37,7 @@ public class ServerQueryHandler implements FrontendQueryHandler {
                  SetHandler.handle(sql, source, rs >>> 8);
                 break;
             case ServerParse.SHOW:
-                // todo ddata source
+                // todo data source
                 ShowHandler.handle(sql, source, rs >>> 8);
                 break;
             case ServerParse.SELECT:

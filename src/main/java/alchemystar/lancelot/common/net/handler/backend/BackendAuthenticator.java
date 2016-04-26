@@ -22,15 +22,15 @@ import alchemystar.lancelot.common.net.proto.mysql.OkPacket;
 import alchemystar.lancelot.common.net.proto.util.Capabilities;
 import alchemystar.lancelot.common.net.proto.util.CharsetUtil;
 import alchemystar.lancelot.common.net.proto.util.SecurityUtil;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
  * 后端连接处理器
  *
  * @Author lizhuyang
  */
-public class BackendAuthenticator extends ChannelInboundHandlerAdapter {
+public class BackendAuthenticator extends ChannelHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(FrontendAuthenticator.class);
 
@@ -82,7 +82,7 @@ public class BackendAuthenticator extends ChannelInboundHandlerAdapter {
         // to wake up the start up thread
         source.countDown();
         // replace the commandHandler of Authenticator
-        ctx.pipeline().replace(this,"BackendCommandHandler",new BackendCommandHandler(source));
+        ctx.pipeline().replace(this, "BackendCommandHandler", new BackendCommandHandler(source));
 
     }
 

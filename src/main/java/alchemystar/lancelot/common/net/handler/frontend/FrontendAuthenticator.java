@@ -19,15 +19,15 @@ import alchemystar.lancelot.common.net.proto.util.RandomUtil;
 import alchemystar.lancelot.common.net.proto.util.SecurityUtil;
 import alchemystar.lancelot.common.net.proto.util.Versions;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
  * 前端通道Active处理器
  *
  * @Author lizhuyang
  */
-public class FrontendAuthenticator extends ChannelInboundHandlerAdapter {
+public class FrontendAuthenticator extends ChannelHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(FrontendAuthenticator.class);
 
@@ -93,7 +93,7 @@ public class FrontendAuthenticator extends ChannelInboundHandlerAdapter {
 
     private void success(final ChannelHandlerContext ctx) {
         // AUTH_OK , process command
-        ctx.pipeline().replace(this, "frontCommandHandler", new FrontCommandHandler(source));
+        ctx.pipeline().replace(this, "frontCommandHandler", new FrontendCommandHandler(source));
         // AUTH_OK is stable
         ByteBuf byteBuf = ctx.alloc().buffer().writeBytes(OkPacket.AUTH_OK);
         // just io , no need thread pool

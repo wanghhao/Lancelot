@@ -3,15 +3,12 @@
  */
 package alchemystar.lancelot.common.net.handler.factory;
 
-/**
- * @Author lizhuyang
- */
-
 import alchemystar.lancelot.common.net.codec.MySqlPacketDecoder;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
 import alchemystar.lancelot.common.net.handler.frontend.FrontendAuthenticator;
 import alchemystar.lancelot.common.net.handler.frontend.FrontendConnection;
 import alchemystar.lancelot.common.net.handler.frontend.FrontendGroupHandler;
+import alchemystar.lancelot.common.net.handler.frontend.FrontendTailHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 
@@ -34,12 +31,14 @@ public class FrontHandlerFactory extends ChannelInitializer<SocketChannel> {
         FrontendConnection source = factory.getConnection();
         FrontendGroupHandler groupHandler = new FrontendGroupHandler(source);
         FrontendAuthenticator authHandler = new FrontendAuthenticator(source);
+        FrontendTailHandler tailHandler = new FrontendTailHandler(source);
         // 心跳handler
         //ch.pipeline().addLast(new IdleStateHandler(10, 10, 10));
         // decode mysql packet depend on it's length
         ch.pipeline().addLast(new MySqlPacketDecoder());
         ch.pipeline().addLast(groupHandler);
         ch.pipeline().addLast(authHandler);
+        ch.pipeline().addLast(tailHandler);
 
     }
 }

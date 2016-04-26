@@ -3,22 +3,27 @@
  */
 package alchemystar.lancelot.common.net.handler.frontend;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import alchemystar.lancelot.common.net.proto.MySQLPacket;
 import alchemystar.lancelot.common.net.proto.mysql.BinaryPacket;
 import alchemystar.lancelot.common.net.proto.util.ErrorCode;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
  * 命令Handler
  *
  * @Author lizhuyang
  */
-public class FrontCommandHandler extends ChannelInboundHandlerAdapter {
+public class FrontendCommandHandler extends ChannelHandlerAdapter {
+
+    private static final Logger logger = LoggerFactory.getLogger(ChannelHandlerAdapter.class);
 
     protected FrontendConnection source;
 
-    public FrontCommandHandler(FrontendConnection source) {
+    public FrontendCommandHandler(FrontendConnection source) {
         this.source = source;
     }
 

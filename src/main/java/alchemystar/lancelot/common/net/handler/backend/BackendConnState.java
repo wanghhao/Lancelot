@@ -16,7 +16,7 @@ public interface BackendConnState {
 
     // must 连续
     int RESULT_SET_FIELD_COUNT = 2;
-    int RESULT_FIELD_FIELDS = 3;
+    int RESULT_SET_FIELDS = 3;
     int RESULT_SET_EOF = 4;
     int RESULT_SET_ROW = 5;
     int RESULT_SET_LAST_EOF = 6;

@@ -3,7 +3,10 @@
  */
 package alchemystar.lancelot.common.net.handler.backend.cmd;
 
+import alchemystar.lancelot.common.net.proto.mysql.CommandPacket;
+import alchemystar.lancelot.common.net.proto.util.BufferUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 
 /**
  * MySql Command包装类
@@ -12,7 +15,7 @@ import io.netty.buffer.ByteBuf;
  */
 public class Command {
     // command的比特buffer
-    private ByteBuf cmdBuf;
+    private CommandPacket cmdPacket;
     // command的Type
     private CmdType type;
     // sqlType,select|update|set|delete
@@ -21,18 +24,22 @@ public class Command {
     public Command() {
     }
 
-    public Command(ByteBuf cmdBuf, CmdType type, int sqlType) {
-        this.cmdBuf = cmdBuf;
+    public Command(CommandPacket cmdPacket, CmdType type, int sqlType) {
+        this.cmdPacket = cmdPacket;
         this.type = type;
         this.sqlType = sqlType;
     }
 
-    public ByteBuf getCmdBuf() {
-        return cmdBuf;
+    public ByteBuf getCmdByteBuf(ChannelHandlerContext ctx) {
+        return cmdPacket.getByteBuf(ctx);
     }
 
-    public void setCmdBuf(ByteBuf cmdBuf) {
-        this.cmdBuf = cmdBuf;
+    public CommandPacket getCmdPacket() {
+        return cmdPacket;
+    }
+
+    public void setCmdPacket(CommandPacket cmdPacket) {
+        this.cmdPacket = cmdPacket;
     }
 
     public CmdType getType() {
@@ -50,4 +57,5 @@ public class Command {
     public void setSqlType(int sqlType) {
         this.sqlType = sqlType;
     }
+
 }

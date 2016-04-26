@@ -3,19 +3,20 @@
  */
 package alchemystar.lancelot.common.net.handler.backend;
 
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelHandlerAdapter;
 
 /**
  * Backend初始化连接Handler,通过这个handler获取BackendConnection信息
+ *
  * @Author lizhuyang
  */
-public class BackendFirstHandler extends ChannelInboundHandlerAdapter {
+public class BackendHeadHandler extends ChannelHandlerAdapter {
 
-    public static final String HANDLER_NAME = "BackendFirstHandler";
+    public static final String HANDLER_NAME = "BackendHeadHandler";
 
     private BackendConnection source;
 
-    public BackendFirstHandler(BackendConnection source) {
+    public BackendHeadHandler(BackendConnection source) {
         this.source = source;
     }
 

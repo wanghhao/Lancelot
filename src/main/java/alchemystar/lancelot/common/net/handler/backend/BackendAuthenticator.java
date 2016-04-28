@@ -77,8 +77,6 @@ public class BackendAuthenticator extends ChannelHandlerAdapter {
             default:
                 throw new UnknownPacketException(bin.toString());
         }
-        // if success
-        source.recycle();
         // to wake up the start up thread
         source.countDown();
         // replace the commandHandler of Authenticator
@@ -112,7 +110,7 @@ public class BackendAuthenticator extends ChannelHandlerAdapter {
         try {
             auth(hsp, ctx);
         } catch (Exception e) {
-            logger.error("auth packet error", e);
+            logger.error("auth packet errorMessage", e);
         }
     }
 
@@ -163,6 +161,7 @@ public class BackendAuthenticator extends ChannelHandlerAdapter {
         // flag |= Capabilities.CLIENT_RESERVED;
         flag |= Capabilities.CLIENT_SECURE_CONNECTION;
         // client extension
+        // 不允许MULTI协议
         // flag |= Capabilities.CLIENT_MULTI_STATEMENTS;
         // flag |= Capabilities.CLIENT_MULTI_RESULTS;
         return flag;

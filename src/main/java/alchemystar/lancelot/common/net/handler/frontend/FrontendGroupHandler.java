@@ -20,6 +20,8 @@ import io.netty.channel.ChannelHandlerContext;
  */
 public class FrontendGroupHandler extends ChannelHandlerAdapter {
 
+    private static final Logger logger = LoggerFactory.getLogger(FrontendGroupHandler.class);
+
     public static ConcurrentHashMap<Long, FrontendConnection> frontendGroup = new ConcurrentHashMap<Long,
             FrontendConnection>();
 
@@ -38,6 +40,7 @@ public class FrontendGroupHandler extends ChannelHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         frontendGroup.remove(source.getId());
+        source.close();
         ctx.fireChannelActive();
     }
 

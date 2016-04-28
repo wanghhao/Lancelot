@@ -59,7 +59,7 @@ public class MySqlPacketDecoder extends ByteToMessageDecoder {
         // data will not be accessed any more,so we can use this array safely
         packet.data = in.readBytes(packetLength).array();
         if (packet.data == null || packet.data.length == 0) {
-            logger.error("get data error,packetLength=" + packet.packetLength);
+            logger.error("get data errorMessage,packetLength=" + packet.packetLength);
         }
         out.add(packet);
     }

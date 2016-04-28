@@ -3,6 +3,9 @@
  */
 package alchemystar.lancelot.common.net.route;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * RouteResultsetNode
  *
@@ -10,7 +13,9 @@ package alchemystar.lancelot.common.net.route;
  */
 public class RouteResultsetNode {
 
-    private final String name; // 数据节点名称
+    private static final Logger logger = LoggerFactory.getLogger(RouteResultsetNode.class);
+
+    private final String name; // 数据节点名称,对每一个连接 需唯一
     private final String statement; // 执行的语句
     private final int sqlType;
 
@@ -34,8 +39,9 @@ public class RouteResultsetNode {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
+        }
         if (obj instanceof RouteResultsetNode) {
             RouteResultsetNode rrn = (RouteResultsetNode) obj;
             if (equals(name, rrn.getName())) {
@@ -51,4 +57,10 @@ public class RouteResultsetNode {
         }
         return str1.equals(str2);
     }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+
 }

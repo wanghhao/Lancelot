@@ -6,10 +6,7 @@ package alchemystar.lancelot.common.net.handler.node;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
-import alchemystar.lancelot.common.net.handler.frontend.FrontendConnection;
 import alchemystar.lancelot.common.net.proto.mysql.ErrorPacket;
-import alchemystar.lancelot.common.net.proto.util.ErrorCode;
-import alchemystar.lancelot.common.net.proto.util.StringUtil;
 
 /**
  * 多节点执行handler
@@ -24,12 +21,12 @@ public abstract class MultiNodeHandler implements ResponseHandler {
     protected final ReentrantLock lock = new ReentrantLock();
     // MySql packetId
     protected byte packetId;
-    // error
-    protected volatile String error;
+    // errno
+    protected int errno;
+    // errorMessage
+    protected String errorMessage;
     // 是否已经失败了,用于还有失败后,还有节点执行的情况
     protected AtomicBoolean isFailed = new AtomicBoolean(false);
-    // frontend
-    protected FrontendConnection frontend;
 
     // 立马down成0
     // todo 这里需要考虑kill 后端连接
@@ -60,29 +57,16 @@ public abstract class MultiNodeHandler implements ResponseHandler {
     protected void reset(int initCount) {
         nodeCount = initCount;
         isFailed.set(false);
-        error = null;
+        errorMessage = null;
         packetId = 0;
     }
 
-    protected ErrorPacket createErrorPacket(String message) {
-        ErrorPacket err = new ErrorPacket();
-        lock.lock();
-        try {
-            err.packetId = 1;
-        } finally {
-            lock.unlock();
-        }
-        err.errno = ErrorCode.ER_YES;
-        err.message = StringUtil.encode(message, frontend.getCharset());
-        return err;
-    }
 
-    public AtomicBoolean getIsFailed() {
-        return isFailed;
-    }
 
-    public void setFailed(String errorMessage) {
+    public void setFailed(String errorMessage,int errno) {
         isFailed.set(true);
-        error = errorMessage;
+        this.errorMessage = errorMessage;
     }
+
+
 }

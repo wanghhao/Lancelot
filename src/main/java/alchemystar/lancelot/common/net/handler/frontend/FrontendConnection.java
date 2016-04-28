@@ -4,24 +4,20 @@
 package alchemystar.lancelot.common.net.handler.frontend;
 
 import java.io.UnsupportedEncodingException;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
-import alchemystar.lancelot.common.net.handler.node.MultiNodeExecutor;
 import alchemystar.lancelot.common.net.handler.node.ResponseHandler;
-import alchemystar.lancelot.common.net.handler.node.SingleNodeExecutor;
+import alchemystar.lancelot.common.net.handler.session.FrontendSession;
 import alchemystar.lancelot.common.net.proto.mysql.BinaryPacket;
 import alchemystar.lancelot.common.net.proto.mysql.ErrorPacket;
 import alchemystar.lancelot.common.net.proto.mysql.MySQLMessage;
 import alchemystar.lancelot.common.net.proto.mysql.OkPacket;
 import alchemystar.lancelot.common.net.proto.util.CharsetUtil;
 import alchemystar.lancelot.common.net.proto.util.ErrorCode;
-import alchemystar.lancelot.common.net.route.RouteResultset;
-import alchemystar.lancelot.common.net.route.RouteResultsetNode;
 import io.netty.buffer.ByteBuf;
 
 /**
@@ -45,18 +41,17 @@ public class FrontendConnection extends AbstractFrontendConnection {
     // update by the ResponseHandler
     private long lastInsertId;
     private MySqlDataSource dataSource;
-    private BackendConnection backend;
-    private ResponseHandler executeHandler;
-
-    // 不同的ResultSetNode的集合
-    private final ConcurrentHashMap<RouteResultsetNode, BackendConnection> target =
-            new ConcurrentHashMap<RouteResultsetNode, BackendConnection>();
+    // 前端session
+    private FrontendSession session;
 
     private static final long AUTH_TIMEOUT = 15 * 1000L;
 
     private volatile int txIsolation;
     private volatile boolean autocommit = true;
-    private volatile boolean txInterrupted;
+
+    public FrontendConnection() {
+        this.session = new FrontendSession(this);
+    }
 
     // initDB的同时 bind BackendConnecton
     public void initDB(BinaryPacket bin) {
@@ -103,9 +98,9 @@ public class FrontendConnection extends AbstractFrontendConnection {
         backend.postCommand(getTxIsolationCommand(txIsolation));
         // sync auto commit状态
         if (autocommit) {
-            backend.postCommand(getAutoComminOnCmd());
+            backend.postCommand(getAutoCommitOnCmd());
         } else {
-            backend.postCommand(getAutoCOmminOffCmd());
+            backend.postCommand(getAutoCommitOffCmd());
         }
         return backend;
     }
@@ -134,19 +129,9 @@ public class FrontendConnection extends AbstractFrontendConnection {
         }
     }
 
-    public BackendConnection getTarget(RouteResultsetNode key) {
-        return target.get(key);
-    }
-
-    public void putTarget(RouteResultsetNode key, BackendConnection backend) {
-        target.put(key, backend);
-    }
-
     public void close() {
         logger.info("close frontedconnection,host:{},port:{}", host, port);
-        if (backend != null) {
-            backend.recycle();
-        }
+        session.close();
         ctx.close();
     }
 
@@ -231,14 +216,15 @@ public class FrontendConnection extends AbstractFrontendConnection {
      * 提交事务
      */
     public void commit() {
-        if (txInterrupted) {
-            writeErrMessage(ErrorCode.ER_YES, "Transaction error, need to rollback.");
+        if (schema == null) {
+            writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
+            return;
         } else {
-            if (schema == null) {
-                writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
-                return;
-            } else {
-                executeHandler.commit();
+            // 如果是自动提交,没有事务,直接返回okay,不做任何操作
+            if(isAutocommit()){
+                writeOk();
+            }else {
+                session.commit();
             }
         }
     }
@@ -247,11 +233,18 @@ public class FrontendConnection extends AbstractFrontendConnection {
      * 回滚事务
      */
     public void rollback() {
-        // 状态检查 todo
-        if (txInterrupted) {
-            txInterrupted = false;
+        if (schema == null) {
+            writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
+            return;
+        } else {
+            // 如果是自动提交,没有事务,直接返回okay,不做任何操作
+            if (isAutocommit()) {
+                writeOk();
+            } else {
+                session.rollback();
+
+            }
         }
-        executeHandler.rollBack();
     }
 
     public void execute(String sql, int type) {
@@ -259,29 +252,8 @@ public class FrontendConnection extends AbstractFrontendConnection {
             writeErrMessage(ErrorCode.ER_NO_DB_ERROR, "No database selected");
             return;
         } else {
-            RouteResultset set = route(sql, type);
-            if (set.getNodeCount() == 0) {
-                writeErrMessage(ErrorCode.ER_PARSE_ERROR, "parse sql and 0 node get");
-                return;
-            } else if (set.getNodeCount() == 1) {
-                executeHandler = new SingleNodeExecutor(set, this);
-            } else {
-                executeHandler = new MultiNodeExecutor(set, this);
-            }
-            executeHandler.setRrs(set);
-            executeHandler.execute();
+            session.execute(sql, type);
         }
-    }
-
-    private RouteResultset route(String sql, int type) {
-        RouteResultset set = new RouteResultset();
-        RouteResultsetNode[] nodes = new RouteResultsetNode[2];
-        nodes[0] = new RouteResultsetNode("1", sql, type);
-        nodes[1] = new RouteResultsetNode("2", sql, type);
-        set.setSqlType(type);
-        set.setStatement(sql);
-        set.setNodes(nodes);
-        return set;
     }
 
     public String getCharset() {
@@ -371,14 +343,6 @@ public class FrontendConnection extends AbstractFrontendConnection {
         this.autocommit = autocommit;
     }
 
-    public boolean isTxInterrupted() {
-        return txInterrupted;
-    }
-
-    public void setTxInterrupted(boolean txInterrupted) {
-        this.txInterrupted = txInterrupted;
-    }
-
     public long getId() {
         return id;
     }
@@ -395,12 +359,15 @@ public class FrontendConnection extends AbstractFrontendConnection {
         this.dataSource = dataSource;
     }
 
-    public ResponseHandler getExecuteHandler() {
-        return executeHandler;
+    public FrontendSession getSession() {
+        return session;
     }
 
-    public void setExecuteHandler(
-            MultiNodeExecutor executeHandler) {
-        this.executeHandler = executeHandler;
+    public void setSession(FrontendSession session) {
+        this.session = session;
+    }
+
+    public ResponseHandler getResponseHandler() {
+        return session.getResponseHandler();
     }
 }

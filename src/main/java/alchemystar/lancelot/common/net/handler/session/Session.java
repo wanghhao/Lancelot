@@ -23,7 +23,7 @@ public interface Session {
     /**
      * 开启一个会话执行
      */
-    void execute(RouteResultset rrs, String sql, int type);
+    void execute(String sql, int type);
 
     /**
      * 提交一个会话执行
@@ -46,4 +46,8 @@ public interface Session {
      * 终止会话，必须在关闭源端连接后执行该方法。
      */
     void terminate();
+    /**
+     * 关闭会话，必须在关闭源端连接后执行该方法。
+     */
+    void close();
 }

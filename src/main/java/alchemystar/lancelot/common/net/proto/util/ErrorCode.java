@@ -10,7 +10,7 @@ package alchemystar.lancelot.common.net.proto.util;
  */
 public interface ErrorCode {
 
-    // cobar error code
+    // cobar errorMessage code
     int ERR_OPEN_SOCKET                            = 3001;
     int ERR_CONNECT_SOCKET                         = 3002;
     int ERR_FINISH_CONNECT                         = 3003;
@@ -24,7 +24,7 @@ public interface ErrorCode {
     int ERR_SINGLE_EXECUTE_NODES                   = 3011;
     int NO_TRANSACTION_IN_MULTI_NODES              = 3012;
 
-    // mysql error code
+    // mysql errorMessage code
     int ER_HASHCHK                                 = 1000;
     int ER_NISAMCHK                                = 1001;
     int ER_NO                                      = 1002;

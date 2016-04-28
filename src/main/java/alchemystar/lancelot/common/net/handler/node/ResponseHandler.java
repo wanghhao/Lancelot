@@ -15,7 +15,7 @@ import alchemystar.lancelot.common.net.route.RouteResultset;
  */
 public interface ResponseHandler {
     // 执行sql
-    void execute();
+    void execute(RouteResultset rrs);
 
     // fieldListResponse
     void fieldListResponse(List<BinaryPacket> fieldList);
@@ -31,10 +31,4 @@ public interface ResponseHandler {
 
     // lastEofResponse
     void lastEofResponse(BinaryPacket bin);
-    // set RouteResultset
-    void setRrs(RouteResultset rrs);
-    // commit;
-    void commit();
-    // rollBack
-    void rollBack();
 }

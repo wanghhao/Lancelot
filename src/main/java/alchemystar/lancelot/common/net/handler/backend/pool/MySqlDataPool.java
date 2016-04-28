@@ -3,6 +3,8 @@
  */
 package alchemystar.lancelot.common.net.handler.backend.pool;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -88,12 +90,19 @@ public class MySqlDataPool {
      * 初始化后端连接
      */
     private void initBackends() {
+        List<ChannelFuture> futureList = new ArrayList<ChannelFuture>();
         for (int i = 0; i < initSize; i++) {
-            b.connect(SystemConfig.MySqlHost, SystemConfig.MySqlPort);
+            ChannelFuture future = b.connect(SystemConfig.MySqlHost, SystemConfig.MySqlPort);
+            futureList.add(future);
         }
         try {
             // awit with time out
             latch.await(SystemConfig.BackendInitialWaitTime, TimeUnit.SECONDS);
+            // if reach here,the backend has been initialized
+            for(ChannelFuture future : futureList){
+                future.sync();
+                recycle(getInitBackendFromFuture(future));
+            }
             // for gc
             latch = null;
             logger.info("the data pool start up");
@@ -110,18 +119,19 @@ public class MySqlDataPool {
 
     public BackendConnection getBackend() {
         BackendConnection backend = null;
-        lock.lock();
+       lock.lock();
         try {
             // idleCount 初始为0
-            if (idleCount >= 1 && items[idleCount--] != null) {
-                backend = items[idleCount];
-                logger.debug("use pooled backend");
+            if (idleCount >= 1 && items[idleCount-1] != null) {
+                backend = items[idleCount-1];
+                idleCount--;
                 return backend;
             }
         } finally {
             lock.unlock();
         }
         // must create new connection
+        logger.info("create new conneciton");
         backend = createNewConnection();
         return backend;
     }
@@ -136,6 +146,19 @@ public class MySqlDataPool {
         }
         throw new RetryConnectFailException("Retry Connect Error Host:" + SystemConfig.MySqlHost + " "
                 + "Port:" + SystemConfig.MySqlPort);
+    }
+
+    private BackendConnection getInitBackendFromFuture(ChannelFuture future){
+        // beacuse the init latch in the outside,we don't need latch await here
+        try {
+            future.sync();
+            BackendHeadHandler firstHandler =
+                    (BackendHeadHandler) future.channel().pipeline().get(BackendHeadHandler.HANDLER_NAME);
+            return firstHandler.getSource();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private BackendConnection getBackendFromFuture(ChannelFuture future) {
@@ -180,6 +203,7 @@ public class MySqlDataPool {
             lock.unlock();
         }
     }
+
 
     public void countDown() {
         latch.countDown();

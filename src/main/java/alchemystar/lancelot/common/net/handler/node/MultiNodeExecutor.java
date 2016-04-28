@@ -10,12 +10,10 @@ import org.slf4j.LoggerFactory;
 
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
 import alchemystar.lancelot.common.net.handler.backend.cmd.Command;
-import alchemystar.lancelot.common.net.handler.frontend.FrontendConnection;
 import alchemystar.lancelot.common.net.handler.session.FrontendSession;
 import alchemystar.lancelot.common.net.proto.mysql.BinaryPacket;
 import alchemystar.lancelot.common.net.proto.mysql.ErrorPacket;
 import alchemystar.lancelot.common.net.proto.mysql.OkPacket;
-import alchemystar.lancelot.common.net.proto.util.ErrorCode;
 import alchemystar.lancelot.common.net.route.RouteResultset;
 import alchemystar.lancelot.common.net.route.RouteResultsetNode;
 
@@ -28,33 +26,26 @@ public class MultiNodeExecutor extends MultiNodeHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiNodeExecutor.class);
 
-    // 路由结果集
-    private RouteResultset rrs;
     // 对应的前端连接
-    private FrontendConnection frontend;
+    private FrontendSession session;
     // 影响的行数,Okay包用
-    private long affectedRows;
+    private volatile long affectedRows;
     // 是否fieldEof被返回了
     private volatile boolean fieldEofReturned;
 
-    public MultiNodeExecutor(RouteResultset rrs, FrontendConnection frontendConnection) {
-        this.rrs = rrs;
-        this.frontend = frontendConnection;
-        fieldEofReturned = false;
-    }
-
     public MultiNodeExecutor(FrontendSession session) {
         fieldEofReturned = false;
-        this.frontend = session.getSource();
+        this.session = session;
     }
 
     /**
      * 异步执行
      */
-    public void execute() {
+    public void execute(RouteResultset rrs) {
+        // 在这里init了count
         reset(rrs.getNodes().length);
         for (RouteResultsetNode node : rrs.getNodes()) {
-            BackendConnection backend = frontend.getStateSyncBackend();
+            BackendConnection backend = session.getTarget(node);
             execute(backend, node);
         }
     }
@@ -67,7 +58,7 @@ public class MultiNodeExecutor extends MultiNodeHandler {
 
     public void execute(BackendConnection backend, RouteResultsetNode node) {
         // convertToCommand
-        Command command = frontend.getFrontendCommand(node.getStatement(), node.getSqlType());
+        Command command = session.getSource().getFrontendCommand(node.getStatement(), node.getSqlType());
         // add to backend queue
         backend.postCommand(command);
         // fire it
@@ -77,10 +68,12 @@ public class MultiNodeExecutor extends MultiNodeHandler {
     public void fieldListResponse(List<BinaryPacket> fieldList) {
         lock.lock();
         try {
-            // 如果还没有传过fieldList的话,则传递
-            if (!fieldEofReturned) {
-                writeFiledList(fieldList);
-                fieldEofReturned = true;
+            if(!isFailed.get()) {
+                // 如果还没有传过fieldList的话,则传递
+                if (!fieldEofReturned) {
+                    writeFiledList(fieldList);
+                    fieldEofReturned = true;
+                }
             }
         } finally {
             lock.unlock();
@@ -91,7 +84,7 @@ public class MultiNodeExecutor extends MultiNodeHandler {
     private void writeFiledList(List<BinaryPacket> fieldList) {
         for (BinaryPacket bin : fieldList) {
             bin.packetId = ++packetId;
-            bin.write(frontend.getCtx());
+            bin.write(session.getCtx());
         }
         fieldList.clear();
     }
@@ -100,18 +93,20 @@ public class MultiNodeExecutor extends MultiNodeHandler {
         ErrorPacket err = new ErrorPacket();
         err.read(bin);
         String errorMessage = new String(err.message);
-        logger.error("error packet " + errorMessage);
+        logger.error("errorMessage packet " + errorMessage);
         lock.lock();
         try {
-            // 但凡有一个error,就发送error信息
+            // 但凡有一个error,就记录error信息
             if (isFailed.compareAndSet(false, true)) {
-                this.setFailed(errorMessage);
-                bin.write(frontend.getCtx());
+                this.setFailed(errorMessage,err.errno);
             }
             // try connection and finish conditon check
             // todo close the relative conn
             // canClose(conn, true);
-            decrementCountBy();
+            // 最后一个才发送
+            if(decrementCountBy()){
+               notifyFailure();
+            }
         } finally {
             lock.unlock();
         }
@@ -130,8 +125,14 @@ public class MultiNodeExecutor extends MultiNodeHandler {
                     ok.affectedRows = affectedRows;
                     // lastInsertId
                     logger.info("last insert id =" + ok.insertId);
-                    frontend.setLastInsertId(ok.insertId);
-                    ok.write(frontend.getCtx());
+                    session.getSource().setLastInsertId(ok.insertId);
+                    ok.write(session.getCtx());
+                    if(session.getSource().isAutocommit()){
+                        session.release();
+                    }
+                }else{
+                    // if 出错
+                    notifyFailure();
                 }
             }
         } finally {
@@ -143,8 +144,9 @@ public class MultiNodeExecutor extends MultiNodeHandler {
         lock.lock();
         try {
             if (!isFailed.get() && fieldEofReturned) {
+                logger.info("rows");
                 bin.packetId = ++packetId;
-                bin.write(frontend.getCtx());
+                bin.write(session.getCtx());
             }
         } finally {
             lock.unlock();
@@ -153,15 +155,20 @@ public class MultiNodeExecutor extends MultiNodeHandler {
 
     // last eof response
     public void lastEofResponse(BinaryPacket bin) {
-        if (isFailed.get()) {
-            return;
-        }
         lock.lock();
         try {
+            logger.info("last eof ");
             if (decrementCountBy()) {
                 if (!isFailed.get()) {
                     bin.packetId = ++packetId;
-                    bin.write(frontend.getCtx());
+                    logger.info("write eof okay");
+                    bin.write(session.getCtx());
+                    // 如果是自动提交,则释放session
+                    if(session.getSource().isAutocommit()){
+                        session.release();
+                    }
+                }else{
+                    notifyFailure();
                 }
             }
         } finally {
@@ -170,30 +177,24 @@ public class MultiNodeExecutor extends MultiNodeHandler {
 
     }
 
-    public void commit() {
-        logger.error("TRANSACTION is not allowed in Multi Node");
-        frontend.writeErrMessage(ErrorCode.NO_TRANSACTION_IN_MULTI_NODES, "TRANSACTION is not allowed in Multi Node");
+    private void notifyFailure(){
+        ErrorPacket error = new ErrorPacket();
+        error.message = errorMessage.getBytes();
+        error.errno = errno;
+        error.packetId = ++packetId;// ERROR_PACKET
+        error.write(session.getCtx());
+        // 如果是自动提交,则释放session
+        if(session.getSource().isAutocommit()){
+            session.release();
+        }
     }
 
-    public void rollBack() {
-        logger.error("TRANSACTION is not allowed in Multi Node");
-        frontend.writeErrMessage(ErrorCode.NO_TRANSACTION_IN_MULTI_NODES, "TRANSACTION is not allowed in Multi Node");
+    public FrontendSession getSession() {
+        return session;
     }
 
-    public RouteResultset getRrs() {
-        return rrs;
-    }
-
-    public void setRrs(RouteResultset rrs) {
-        this.rrs = rrs;
-    }
-
-    public FrontendConnection getFrontend() {
-        return frontend;
-    }
-
-    public void setFrontend(FrontendConnection frontend) {
-        this.frontend = frontend;
+    public void setSession(FrontendSession session) {
+        this.session = session;
     }
 
     public long getAffectedRows() {

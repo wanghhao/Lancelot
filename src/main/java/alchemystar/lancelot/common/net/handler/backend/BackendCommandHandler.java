@@ -92,7 +92,7 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
                 err.read(bin);
                 // write(bin,cmdType);
                 getResponseHandler().errorResponse(bin);
-                logger.error("handleResultSet error:" + new String(err.message));
+                logger.error("handleResultSet errorMessage:" + new String(err.message));
                 break;
             case EOFPacket.FIELD_COUNT:
                 EOFPacket eof = new EOFPacket();
@@ -104,7 +104,6 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
                     selectStateStep();
                     // 给FieldList增加eof
                     addToFieldList(bin);
-                    // writeFiledList();
                     getResponseHandler().fieldListResponse(fieldList);
                 } else {
                     if (eof.hasStatusFlag(MySQLPacket.SERVER_MORE_RESULTS_EXISTS)) {
@@ -116,24 +115,19 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
                         result = true;
                     }
                     getResponseHandler().lastEofResponse(bin);
-                    // write(bin,cmdType);
                 }
                 break;
             default:
                 switch (selectState) {
                     case BackendConnState.RESULT_SET_FIELD_COUNT:
-                        // logger.info("field count");
                         selectStateStep();
                         addToFieldList(bin);
                         break;
                     case BackendConnState.RESULT_SET_FIELDS:
-                        // logger.info("fields");
                         addToFieldList(bin);
                         break;
                     case BackendConnState.RESULT_SET_ROW:
-                        logger.info("rows");
                         getResponseHandler().rowResponse(bin);
-                        // write(bin,cmdType);
                         break;
                 }
         }
@@ -142,23 +136,6 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
 
     private void addToFieldList(BinaryPacket bin) {
         fieldList.add(bin);
-    }
-
-    private void writeFiledList() {
-        for (BinaryPacket bin : fieldList) {
-            bin.write(source.getFrontCtx());
-        }
-        fieldList.clear();
-    }
-
-    private void write(BinaryPacket bin, CmdType cmdType) {
-        if (cmdType == CmdType.FRONTEND_TYPE) {
-            bin.write(source.getFrontCtx());
-            // for gc
-            bin.data = null;
-        } else {
-            logger.debug("Backend query discard");
-        }
     }
 
     private void resetSelect() {
@@ -170,7 +147,7 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
     // select状态的推进
     private void selectStateStep() {
         selectState++;
-        // last_eof和field_cout合并为同一状态
+        // last_eof和field_count合并为同一状态
         if (selectState == 6) {
             selectState = 2;
         }
@@ -180,9 +157,9 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
         switch (bin.data[0]) {
             case OkPacket.FIELD_COUNT:
                 if (cmdType == CmdType.BACKEND_TYPE) {
-                    logger.info("backend command okay");
+                     // logger.debug("backend command okay");
                 } else {
-                    logger.debug("frontend command okay");
+                     // logger.debug("frontend command okay");
                     getResponseHandler().okResponse(bin);
                 }
                 break;
@@ -190,7 +167,7 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
                 ErrorPacket err = new ErrorPacket();
                 err.read(bin);
                 if (cmdType == CmdType.BACKEND_TYPE) {
-                    throw new ErrorPacketException("Command error,message=" + new String(err.message));
+                    throw new ErrorPacketException("Command errorMessage,message=" + new String(err.message));
                 } else {
                     getResponseHandler().errorResponse(bin);
                 }
@@ -203,6 +180,6 @@ public class BackendCommandHandler extends ChannelHandlerAdapter {
 
     private ResponseHandler getResponseHandler() {
         FrontendConnection frontendConnection = source.frontend;
-        return frontendConnection.getExecuteHandler();
+        return frontendConnection.getResponseHandler();
     }
 }

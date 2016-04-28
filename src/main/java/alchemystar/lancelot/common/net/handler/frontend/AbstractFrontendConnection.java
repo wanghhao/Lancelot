@@ -45,13 +45,13 @@ public class AbstractFrontendConnection {
 
 
 
-    public Command getAutoComminOnCmd() {
+    public Command getAutoCommitOnCmd() {
         CommandPacket packet = CmdPacketEnum._AUTOCOMMIT_ON;
         return new Command(packet, CmdType.BACKEND_TYPE, ServerParse.SET);
 
     }
 
-    public Command getAutoCOmminOffCmd() {
+    public Command getAutoCommitOffCmd() {
         CommandPacket packet = CmdPacketEnum._AUTOCOMMIT_OFF;
         return  new Command(packet, CmdType.BACKEND_TYPE, ServerParse.SET);
     }

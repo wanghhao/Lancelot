@@ -31,4 +31,5 @@ public class FrontendTailHandler extends ChannelHandlerAdapter{
         source.writeErrMessage(ErrorCode.ERR_EXCEPTION_CAUGHT,cause.getMessage());
         ctx.close();
     }
+
 }

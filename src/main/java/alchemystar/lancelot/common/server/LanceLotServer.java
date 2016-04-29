@@ -6,6 +6,7 @@ package alchemystar.lancelot.common.server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import alchemystar.lancelot.common.config.SocketConfig;
 import alchemystar.lancelot.common.config.SystemConfig;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataPool;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
@@ -63,7 +64,9 @@ public class LanceLotServer extends Thread {
             b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     .childHandler(new FrontHandlerFactory(dataSource)).option(ChannelOption.ALLOCATOR,
-                    PooledByteBufAllocator.DEFAULT);
+                    PooledByteBufAllocator.DEFAULT)
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, SocketConfig.CONNECT_TIMEOUT_MILLIS)
+                    .option(ChannelOption.SO_TIMEOUT, SocketConfig.SO_TIMEOUT);
             ChannelFuture f = b.bind(SystemConfig.ServerPort).sync();
             f.channel().closeFuture().sync();
 

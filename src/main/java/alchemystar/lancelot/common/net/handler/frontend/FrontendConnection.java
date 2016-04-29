@@ -82,7 +82,7 @@ public class FrontendConnection extends AbstractFrontendConnection {
 
     /**
      * 获取已经状态同步过的backend
-     *
+     * todo 优化,减少发送请求的数量
      * @return
      */
     public BackendConnection getStateSyncBackend() {

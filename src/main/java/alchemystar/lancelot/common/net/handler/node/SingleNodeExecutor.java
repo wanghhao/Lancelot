@@ -5,9 +5,6 @@ package alchemystar.lancelot.common.net.handler.node;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import alchemystar.lancelot.common.net.handler.backend.BackendConnection;
 import alchemystar.lancelot.common.net.handler.backend.cmd.Command;
 import alchemystar.lancelot.common.net.handler.session.FrontendSession;
@@ -24,7 +21,6 @@ import alchemystar.lancelot.common.net.route.RouteResultsetNode;
  */
 public class SingleNodeExecutor implements ResponseHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(SingleNodeExecutor.class);
     private FrontendSession session;
 
     public SingleNodeExecutor(FrontendSession session) {
@@ -50,7 +46,7 @@ public class SingleNodeExecutor implements ResponseHandler {
     }
 
     public void fieldListResponse(List<BinaryPacket> fieldList) {
-            writeFiledList(fieldList);
+        writeFiledList(fieldList);
     }
 
     private void writeFiledList(List<BinaryPacket> fieldList) {

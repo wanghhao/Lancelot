@@ -221,6 +221,8 @@ public class MySqlDataPool {
 
         bootstrap.option(ChannelOption.SO_RCVBUF, SocketConfig.Backend_Socket_Recv_Buf);
         bootstrap.option(ChannelOption.SO_SNDBUF, SocketConfig.Backend_Socket_Send_Buf);
+        bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,SocketConfig.CONNECT_TIMEOUT_MILLIS);
+        bootstrap.option(ChannelOption.SO_TIMEOUT,SocketConfig.SO_TIMEOUT);
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);

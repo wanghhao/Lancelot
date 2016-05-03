@@ -7,7 +7,7 @@ import alchemystar.lancelot.common.net.proto.mysql.MySQLMessage;
 import io.netty.buffer.ByteBuf;
 
 /**
- * @author xiongzhao@alchemystar.com
+ * @author lizhuyang
  */
 public class ByteUtil {
     public static int readUB2(ByteBuf data) {

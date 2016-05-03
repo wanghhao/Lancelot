@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.net.route;
 
@@ -15,9 +15,9 @@ public class RouteResultsetNode {
 
     private static final Logger logger = LoggerFactory.getLogger(RouteResultsetNode.class);
 
-    private final String name; // 数据节点名称,对每一个连接 需唯一
-    private final String statement; // 执行的语句
-    private final int sqlType;
+    private  String name; // 数据节点名称,对每一个连接 需唯一
+    private  String statement; // 执行的语句
+    private  int sqlType;
 
     public RouteResultsetNode(String name, String statement, int sqlType) {
         this.name = name;

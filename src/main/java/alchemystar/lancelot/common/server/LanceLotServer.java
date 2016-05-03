@@ -11,6 +11,7 @@ import alchemystar.lancelot.common.config.SystemConfig;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataPool;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
 import alchemystar.lancelot.common.net.handler.factory.FrontHandlerFactory;
+import alchemystar.lancelot.loader.XmlLoader;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
@@ -53,6 +54,8 @@ public class LanceLotServer extends Thread {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
+            //加载配置信息
+          //  XmlLoader.load();
             MySqlDataPool dataPool = new MySqlDataPool(SystemConfig.BackendInitialSize, SystemConfig.BackendMaxSize);
             dataPool.init();
             // dataPool wrapper

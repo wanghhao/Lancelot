@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.route.util;
 
@@ -13,10 +13,7 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.time.DateUtils;
 
 /**
- * 
- * 
- * @author xiongzhao@baidu.com
- * @version $Id: DateUtil.java, v 0.1 2013年12月21日 下午6:26:02 HI:brucest0078 Exp $
+ * @author lizhuyang
  */
 public final class DateUtil extends DateUtils {
 

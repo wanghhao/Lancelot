@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author xiongzhao@alchemystar.com 2010-8-3 下午06:12:53
+ * @author lizhuyang
  */
 public class CharsetUtil {
     private static final String[] INDEX_TO_CHARSET = new String[99];

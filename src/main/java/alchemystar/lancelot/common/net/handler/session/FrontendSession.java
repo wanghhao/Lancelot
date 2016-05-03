@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.common.net.handler.session;
 
@@ -18,6 +18,7 @@ import alchemystar.lancelot.common.net.handler.node.SingleNodeExecutor;
 import alchemystar.lancelot.common.net.proto.util.ErrorCode;
 import alchemystar.lancelot.common.net.route.RouteResultset;
 import alchemystar.lancelot.common.net.route.RouteResultsetNode;
+import alchemystar.lancelot.route.LancelotStmtParser;
 import io.netty.channel.ChannelHandlerContext;
 
 /**
@@ -81,14 +82,15 @@ public class FrontendSession implements Session {
     }
 
     private RouteResultset route(String sql, int type) {
-        RouteResultset set = new RouteResultset();
-        RouteResultsetNode[] nodes = new RouteResultsetNode[1];
-        nodes[0] = new RouteResultsetNode("1", sql, type);
-      //  nodes[1] = new RouteResultsetNode("2", sql, type);
-        set.setSqlType(type);
-        set.setStatement(sql);
-        set.setNodes(nodes);
-        return set;
+        RouteResultset routeResultset = LancelotStmtParser.parser(sql,type);
+        if(routeResultset == null){
+            routeResultset = new RouteResultset();
+            RouteResultsetNode[] nodes = new RouteResultsetNode[1];
+            RouteResultsetNode node = new RouteResultsetNode("1",sql,type);
+            nodes[0] = node;
+            routeResultset.setNodes(nodes);
+        }
+        return routeResultset;
     }
 
     public void commit() {

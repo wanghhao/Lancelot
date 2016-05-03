@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Baidu, Inc. All Rights Reserved.
+ * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
 package alchemystar.lancelot.route.util;
 
@@ -13,9 +13,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
 /**
- * 
- * @author xiongzhao@baidu.com
- * @version $Id: StringUtil.java, v 0.1 2013年12月21日 下午6:26:43 HI:brucest0078 Exp $
+ * @author lizhuyang
  */
 public class StringUtil extends StringUtils {
 

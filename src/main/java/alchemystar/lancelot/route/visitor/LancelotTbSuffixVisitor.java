@@ -3,44 +3,24 @@
  */
 package alchemystar.lancelot.route.visitor;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.Map;
-
-import org.apache.velocity.VelocityContext;
-import org.apache.velocity.app.Velocity;
-
 import com.alibaba.druid.sql.ast.SQLCommentHint;
 import com.alibaba.druid.sql.ast.SQLSetQuantifier;
 import com.alibaba.druid.sql.ast.expr.SQLIdentifierExpr;
 import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
-import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
-import com.alibaba.druid.stat.TableStat;
-
-import alchemystar.lancelot.loader.TableRuleConfig;
-import alchemystar.lancelot.route.util.VelocityUtil;
 
 /**
- * LancelotOutputVisitor
- * 这边可以加上路由策略,用策略模式
- *
  * @Author lizhuyang
  */
-public class LancelotOutputVisitor extends MySqlOutputVisitor {
+public class LancelotTbSuffixVisitor extends MySqlOutputVisitor {
 
-    private final Map<String, TableRuleConfig> tableRules;
-    private final SchemaStatVisitor visitor;
+    private String tableSuffix = null;
 
-    public LancelotOutputVisitor(Appendable appender, Map<String, TableRuleConfig> tableRules,
-                                 SchemaStatVisitor visitor) {
+    public LancelotTbSuffixVisitor(Appendable appender, String tableSuffix) {
         super(appender);
-        this.tableRules = tableRules;
-        this.visitor = visitor;
+        this.tableSuffix = tableSuffix;
     }
-
 
     @Override
     public boolean visit(MySqlSelectQueryBlock x) {
@@ -162,49 +142,8 @@ public class LancelotOutputVisitor extends MySqlOutputVisitor {
             SQLExprTableSource from = (SQLExprTableSource) x.getFrom();
             if (from.getExpr() instanceof SQLIdentifierExpr) {
                 SQLIdentifierExpr expr = (SQLIdentifierExpr) from.getExpr();
-                if (tableRules.containsKey(expr.getName())) {
-                    expr.setName(renderTB(expr.getName(), tableRules.get(expr.getName())));
-                    // expr.setName(expr.getName());
-                }
+                expr.setName(expr.getName() + tableSuffix);
             }
         }
     }
-
-    private String renderTB(String tableName, TableRuleConfig config) {
-        String hitColumn = null;
-        String hitColumnValue = null;
-        for (TableStat.Condition condition : visitor.getConditions()) {
-            if (config.contains(condition.getColumn().getName())) {
-                if (condition.getOperator().equals("=")) {
-                    hitColumn = condition.getColumn().getName();
-                    hitColumnValue = condition.getValues().get(0).toString();
-                    break;
-                }
-
-            }
-        }
-        // 没有命中,则返回原值
-        if (hitColumn == null) {
-            return tableName;
-        }
-        String tbTbl = config.getTbRender();
-        String dbTpl = config.getDbRender();
-        Writer writer = new StringWriter();
-        try {
-            VelocityContext context = VelocityUtil.getContext();
-            context.put(hitColumn, hitColumnValue);
-            Velocity.evaluate(context, writer, "", tbTbl);
-            return writer.toString();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
 }

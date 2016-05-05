@@ -40,6 +40,8 @@ public class MultiNodeExecutor extends MultiNodeHandler {
 
     /**
      * 异步执行
+     * todo 如果要做连接数限流的话,backend.recycle的时候在lastEof获取的时候,执行
+     * 的时候需要加锁,来限制并发
      */
     public void execute(RouteResultset rrs) {
         // 在这里init了count

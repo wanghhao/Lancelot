@@ -123,7 +123,7 @@ public class FrontendAuthenticator extends ChannelHandlerAdapter {
 
     protected boolean checkPassword(byte[] password, String user) {
         // todo config
-        String pass = "MiraCle";
+        String pass = "Mi123312Ce";
 
         // check null
         if (pass == null || pass.length() == 0) {

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2016 alchemystar, Inc. All Rights Reserved.
  */
-package alchemystar.lancelot.common.server;
+package alchemystar.lancelot.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,6 @@ import alchemystar.lancelot.common.config.SystemConfig;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataPool;
 import alchemystar.lancelot.common.net.handler.backend.pool.MySqlDataSource;
 import alchemystar.lancelot.common.net.handler.factory.FrontHandlerFactory;
-import alchemystar.lancelot.loader.XmlLoader;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;

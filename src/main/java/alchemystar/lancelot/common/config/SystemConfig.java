@@ -19,7 +19,7 @@ public class SystemConfig {
     public static final int ServerPort =8090;
     public static final int MySqlPort = 3306;
     public static final String UserName = "root";
-    public static final String PassWord = "123123123";
+    public static final String PassWord = "passw0rd";
 
     // public static final int MySqlPort = 8080;
     // public static final String UserName = "pay";

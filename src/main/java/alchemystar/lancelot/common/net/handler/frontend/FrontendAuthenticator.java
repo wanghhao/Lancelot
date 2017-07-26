@@ -3,24 +3,19 @@
  */
 package alchemystar.lancelot.common.net.handler.frontend;
 
-import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import alchemystar.lancelot.common.net.proto.mysql.AuthPacket;
 import alchemystar.lancelot.common.net.proto.mysql.BinaryPacket;
 import alchemystar.lancelot.common.net.proto.mysql.HandshakePacket;
 import alchemystar.lancelot.common.net.proto.mysql.OkPacket;
-import alchemystar.lancelot.common.net.proto.util.Capabilities;
-import alchemystar.lancelot.common.net.proto.util.ErrorCode;
-import alchemystar.lancelot.common.net.proto.util.RandomUtil;
-import alchemystar.lancelot.common.net.proto.util.SecurityUtil;
-import alchemystar.lancelot.common.net.proto.util.Versions;
+import alchemystar.lancelot.common.net.proto.util.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * 前端通道Active处理器
@@ -123,16 +118,16 @@ public class FrontendAuthenticator extends ChannelHandlerAdapter {
 
     protected boolean checkPassword(byte[] password, String user) {
         // todo config
-        String pass = "Mi123312Ce";
+        String pass = "aaa";
 
         // check null
-        if (pass == null || pass.length() == 0) {
-            if (password == null || password.length == 0) {
-                return true;
-            } else {
-                return false;
-            }
-        }
+//        if (pass == null || pass.length() == 0) {
+//            if (password == null || password.length == 0) {
+//                return true;
+//            } else {
+//                return false;
+//            }
+//        }
         if (password == null || password.length == 0) {
             return false;
         }
